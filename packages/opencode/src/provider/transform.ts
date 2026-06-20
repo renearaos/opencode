@@ -1306,6 +1306,9 @@ function sanitizeOpenAISchema(value: unknown): unknown {
 
   if (typeof value.$ref === "string") result.$ref = value.$ref
   if (typeof value.description === "string") result.description = value.description
+  if ("default" in value) result.default = value.default
+  if (Array.isArray(value.examples)) result.examples = value.examples
+  if (typeof value.title === "string") result.title = value.title
   if ("const" in value) result.enum = [value.const]
   else if (Array.isArray(value.enum)) result.enum = value.enum
 
@@ -1362,13 +1365,21 @@ function sanitizeOpenAISchema(value: unknown): unknown {
         ? ["object"]
         : ["items", "prefixItems"].some((key) => key in value)
           ? ["array"]
-          : "enum" in result || "format" in value
+          : "enum" in result || "format" in value || "pattern" in value ||
+            "minLength" in value || "maxLength" in value ||
+            "contentMediaType" in value || "contentEncoding" in value
             ? ["string"]
             : ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"].some((key) => key in value)
               ? ["number"]
               : []
 
-  if (inferredTypes.length === 0) return {}
+  if (inferredTypes.length === 0) {
+    if (typeof value.description === "string") {
+      result.type = "string"
+      return result
+    }
+    return {}
+  }
 
   result.type = inferredTypes.length === 1 ? inferredTypes[0] : inferredTypes
   if (inferredTypes.includes("object") && !("properties" in result)) result.properties = {}
