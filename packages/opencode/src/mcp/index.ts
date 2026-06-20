@@ -369,7 +369,7 @@ export const layer = Layer.effect(
 
         if (!mcpClient) {
           if (status.status !== "connected" && status.status !== "disabled") {
-            yield* Effect.logWarning("server unavailable", { key, type: mcp.type, status: status.status })
+            yield* Effect.logWarning("server unavailable", { key, type: mcp.type, status: status.status, error: (status as any).error })
           }
           return { status } satisfies CreateResult
         }
