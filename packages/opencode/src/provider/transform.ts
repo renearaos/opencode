@@ -1433,6 +1433,10 @@ function sanitizeOpenAISchema(value: unknown): unknown {
   if ("const" in value) result.enum = [value.const]
   else if (Array.isArray(value.enum)) result.enum = value.enum
 
+  // Always preserve type - it's needed for property values where type would otherwise be lost
+  // and for top-level schemas the inference logic below will override if needed
+  if (typeof value.type === "string") result.type = value.type
+
   if (isPlainObject(value.properties)) {
     result.properties = Object.fromEntries(
       Object.entries(value.properties).map(([key, item]) => [key, sanitizeOpenAISchema(item)]),
@@ -1527,10 +1531,8 @@ export function schema(model: Provider.Model, schema: JSONSchema7): JSONSchema7 
   }
   */
 
-  if (model.api.npm === "@ai-sdk/openai" || model.api.npm === "@ai-sdk/azure" || model.api.npm === "@ai-sdk/openai-compatible") {
-    schema = sanitizeOpenAISchema(schema) as JSONSchema7
-    // Codex also applies lossy compaction above 4 KB; defer that until OpenCode needs the same schema budget.
-  }
+  schema = sanitizeOpenAISchema(schema) as JSONSchema7
+  // Codex also applies lossy compaction above 4 KB; defer that until OpenCode needs the same schema budget.
 
   if (model.providerID === "moonshotai" || model.api.id.toLowerCase().includes("kimi")) {
     const sanitizeMoonshot = (obj: unknown): unknown => {

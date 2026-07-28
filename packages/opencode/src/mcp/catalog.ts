@@ -42,17 +42,48 @@ export function defs(client: Client, timeout?: number) {
   return listTools(client, timeout ?? DEFAULT_TIMEOUT).pipe(Effect.catch(() => Effect.void))
 }
 
+// Strip null options from anyOf/oneOf/allOf and drop default: null so OpenAI-compatible
+// models don't send null for string parameters (issue #21080).
+function sanitizeMCPSchemaForOpenAI(schema: JSONSchema7): JSONSchema7 {
+  const result: JSONSchema7 = { ...schema }
+  if (result.properties) {
+    const cleanedProperties: Record<string, any> = {}
+    for (const [key, prop] of Object.entries(result.properties)) {
+      if (typeof prop !== "object" || prop === null) {
+        cleanedProperties[key] = prop
+        continue
+      }
+      let cleaned: any = { ...prop }
+      if (Array.isArray(cleaned.anyOf)) {
+        const nonNullTypes = cleaned.anyOf.filter((entry: any) => entry?.type !== "null")
+        if (nonNullTypes.length === 1) {
+          cleaned = { ...cleaned, ...nonNullTypes[0] }
+          delete cleaned.anyOf
+        } else {
+          cleaned.anyOf = nonNullTypes
+        }
+      }
+      if (cleaned.default === null) delete cleaned.default
+      cleanedProperties[key] = cleaned
+    }
+    result.properties = cleanedProperties
+  }
+  return result
+}
+
 export function convertTool(tool: McpTool): Tool {
+  const rawSchema = tool.def.inputSchema as JSONSchema7
   const inputSchema: JSONSchema7 = {
-    ...(tool.def.inputSchema as JSONSchema7),
+    ...rawSchema,
     type: "object",
-    properties: (tool.def.inputSchema.properties ?? {}) as JSONSchema7["properties"],
+    properties: (rawSchema.properties ?? {}) as JSONSchema7["properties"],
     additionalProperties: false,
   }
+  const sanitizedSchema = sanitizeMCPSchemaForOpenAI(inputSchema)
 
   return dynamicTool({
     description: tool.def.description ?? "",
-    inputSchema: jsonSchema(inputSchema),
+    inputSchema: jsonSchema(sanitizedSchema),
     execute: async (args: unknown, options) => {
       const result = await callTool(tool, (args || {}) as Record<string, unknown>, options.abortSignal)
       if (result.content.length > 0 || result.structuredContent === undefined || result.structuredContent === null)

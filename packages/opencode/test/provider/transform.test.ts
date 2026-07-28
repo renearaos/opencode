@@ -1574,7 +1574,7 @@ describe("ProviderTransform.schema - openai supported schema subset", () => {
     })
   })
 
-  test("does not sanitize non-openai providers", () => {
+  test("sanitizes all providers including non-openai", () => {
     const result = ProviderTransform.schema(
       {
         providerID: "anthropic",
@@ -1594,7 +1594,8 @@ describe("ProviderTransform.schema - openai supported schema subset", () => {
       } as any,
     ) as any
 
-    expect(result.properties.query.pattern).toBe("^https://")
+    expect(result.properties.query.pattern).toBeUndefined()
+    expect(result.properties.query.type).toBe("string")
   })
 
   test.each([
