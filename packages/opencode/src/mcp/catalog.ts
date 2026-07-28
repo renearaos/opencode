@@ -15,8 +15,11 @@ export async function callTool(
   args: Record<string, unknown>,
   signal?: AbortSignal,
 ): Promise<CallToolResult> {
+  const cleanArgs = Object.fromEntries(
+    Object.entries(args || {}).filter(([, v]) => v !== null && v !== undefined),
+  )
   const result = await tool.client.callTool(
-    { name: tool.def.name, arguments: args },
+    { name: tool.def.name, arguments: cleanArgs },
     {
       resetTimeoutOnProgress: true,
       signal,

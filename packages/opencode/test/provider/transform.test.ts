@@ -1496,11 +1496,13 @@ describe("ProviderTransform.schema - openai supported schema subset", () => {
     } as any) as any
 
     expect(result).toEqual({
+      title: "Search",
       type: "object",
       properties: {
         query: {
           type: "string",
           description: "Search query",
+          default: "https://example.com",
         },
         count: {
           type: "integer",
@@ -1559,6 +1561,7 @@ describe("ProviderTransform.schema - openai supported schema subset", () => {
     expect(result.properties.value).toEqual({
       $ref: "#/$defs/Value",
       description: "Referenced value",
+      examples: ["ignored"],
     })
     expect(result.$defs).toEqual({
       Value: {
